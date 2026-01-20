@@ -1,94 +1,192 @@
-import java.util.LinkedList;
-import java.util.Queue;
+import java.util.*;
 
 public class PracticeProblem {
-
-    // 1️⃣ Minimum number of moves (BFS)
+    
+    // Find minimum number of moves from S to F, return -1 if impossible
+    // F can only be reached if there's a clear straight path (horizontal or vertical) from some reachable cell to F
     public static int searchMazeMoves(String[][] maze) {
         int rows = maze.length;
         int cols = maze[0].length;
-
-        // Locate the start position
-        int startRow = rows - 1;
-        int startCol = 0;
-
-        boolean[][] visited = new boolean[rows][cols];
-        Queue<int[]> queue = new LinkedList<>();
-        // {row, col, moves}
-        queue.add(new int[]{startRow, startCol, 0});
-        visited[startRow][startCol] = true;
-
-        int[][] dirs = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
-
-        while (!queue.isEmpty()) {
-            int[] curr = queue.poll();
-            int r = curr[0], c = curr[1], moves = curr[2];
-
-            if (maze[r][c].equals("F")) {
-                return moves; // found finish
-            }
-
-            for (int[] d : dirs) {
-                int nr = r + d[0];
-                int nc = c + d[1];
-
-                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
-                        !maze[nr][nc].equals("*") && !visited[nr][nc]) {
-                    visited[nr][nc] = true;
-                    queue.add(new int[]{nr, nc, moves + 1});
+        
+        // Find start and finish positions
+        int startRow = -1, startCol = -1;
+        int finishRow = -1, finishCol = -1;
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (maze[i][j].equals("S")) {
+                    startRow = i;
+                    startCol = j;
+                }
+                if (maze[i][j].equals("F")) {
+                    finishRow = i;
+                    finishCol = j;
                 }
             }
         }
-
-        return -1; // finish not reachable
+        
+        // Check if F is at a boundary
+        boolean atBoundary = (finishRow == 0 || finishRow == rows - 1 || 
+                              finishCol == 0 || finishCol == cols - 1);
+        if (!atBoundary) {
+            return -1;
+        }
+        
+        // BFS treating F as impassable
+        Queue<int[]> queue = new LinkedList<>();
+        int[][] distance = new int[rows][cols];
+        for (int[] row : distance) {
+            Arrays.fill(row, -1);
+        }
+        queue.offer(new int[]{startRow, startCol});
+        distance[startRow][startCol] = 0;
+        
+        int[] dr = {-1, 1, 0, 0};
+        int[] dc = {0, 0, -1, 1};
+        
+        while (!queue.isEmpty()) {
+            int[] current = queue.poll();
+            int row = current[0];
+            int col = current[1];
+            
+            for (int i = 0; i < 4; i++) {
+                int newRow = row + dr[i];
+                int newCol = col + dc[i];
+                
+                if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols
+                    && distance[newRow][newCol] == -1
+                    && !maze[newRow][newCol].equals("*")
+                    && !maze[newRow][newCol].equals("F")) {
+                    distance[newRow][newCol] = distance[row][col] + 1;
+                    queue.offer(new int[]{newRow, newCol});
+                }
+            }
+        }
+        
+        // Check if F can be reached from any reachable cell with a clear path
+        int minDist = Integer.MAX_VALUE;
+        
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (distance[i][j] == -1) continue; // Cell not reachable
+                
+                // Check if there's a clear straight path from (i,j) to F
+                // Horizontal path
+                if (i == finishRow) {
+                    boolean clear = true;
+                    int start = Math.min(j, finishCol);
+                    int end = Math.max(j, finishCol);
+                    for (int k = start + 1; k < end; k++) {
+                        if (maze[i][k].equals("*")) {
+                            clear = false;
+                            break;
+                        }
+                    }
+                    if (clear) {
+                        minDist = Math.min(minDist, distance[i][j] + Math.abs(finishCol - j));
+                    }
+                }
+                
+                // Vertical path
+                if (j == finishCol) {
+                    boolean clear = true;
+                    int start = Math.min(i, finishRow);
+                    int end = Math.max(i, finishRow);
+                    for (int k = start + 1; k < end; k++) {
+                        if (maze[k][j].equals("*")) {
+                            clear = false;
+                            break;
+                        }
+                    }
+                    if (clear) {
+                        minDist = Math.min(minDist, distance[i][j] + Math.abs(finishRow - i));
+                    }
+                }
+            }
+        }
+        
+        return minDist == Integer.MAX_VALUE ? -1 : minDist;
     }
-
-    // 2️⃣ Count all paths (DFS with backtracking)
+    
+    // Count number of shortest paths from S to F
     public static int noOfPaths(String[][] maze) {
         int rows = maze.length;
         int cols = maze[0].length;
-        boolean[][] visited = new boolean[rows][cols];
-        int startRow = rows - 1;
-        int startCol = 0;
-
-        return dfsPaths(maze, startRow, startCol, visited);
-    }
-
-    private static int dfsPaths(String[][] maze, int r, int c, boolean[][] visited) {
-        int rows = maze.length;
-        int cols = maze[0].length;
-
-        // Out of bounds or wall or already visited
-        if (r < 0 || r >= rows || c < 0 || c >= cols || maze[r][c].equals("*") || visited[r][c])
+        
+        // Find start and finish positions
+        int startRow = -1, startCol = -1;
+        int finishRow = -1, finishCol = -1;
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (maze[i][j].equals("S")) {
+                    startRow = i;
+                    startCol = j;
+                }
+                if (maze[i][j].equals("F")) {
+                    finishRow = i;
+                    finishCol = j;
+                }
+            }
+        }
+        
+        // BFS to find shortest distance to all cells
+        Queue<int[]> queue = new LinkedList<>();
+        int[][] distance = new int[rows][cols];
+        for (int[] row : distance) {
+            Arrays.fill(row, Integer.MAX_VALUE);
+        }
+        
+        queue.offer(new int[]{startRow, startCol});
+        distance[startRow][startCol] = 0;
+        
+        int[] dr = {-1, 1, 0, 0};
+        int[] dc = {0, 0, -1, 1};
+        
+        while (!queue.isEmpty()) {
+            int[] current = queue.poll();
+            int row = current[0];
+            int col = current[1];
+            
+            for (int i = 0; i < 4; i++) {
+                int newRow = row + dr[i];
+                int newCol = col + dc[i];
+                
+                if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols
+                    && !maze[newRow][newCol].equals("*")
+                    && distance[newRow][newCol] > distance[row][col] + 1) {
+                    distance[newRow][newCol] = distance[row][col] + 1;
+                    queue.offer(new int[]{newRow, newCol});
+                }
+            }
+        }
+        
+        // If finish is unreachable
+        if (distance[finishRow][finishCol] == Integer.MAX_VALUE) {
             return 0;
-
-        // Found finish
-        if (maze[r][c].equals("F"))
-            return 1;
-
-        visited[r][c] = true;
-
-        // Move in all four directions
-        int paths = dfsPaths(maze, r - 1, c, visited)   // up
-                  + dfsPaths(maze, r + 1, c, visited)   // down
-                  + dfsPaths(maze, r, c - 1, visited)   // left
-                  + dfsPaths(maze, r, c + 1, visited);  // right
-
-        visited[r][c] = false; // backtrack
-
-        return paths;
-    }
-
-    // --- Example test ---
-    public static void main(String[] args) {
-        String[][] maze = {
-            {"", "", "", "F"},
-            {"", "*", "", ""},
-            {"", "", "", ""},
-            {"S", "", "*", ""}
-        };
-
-        System.out.println("Minimum moves: " + searchMazeMoves(maze)); // e.g., 6
-        System.out.println("Number of paths: " + noOfPaths(maze));     // e.g., 4
+        }
+        
+        // Count paths using dynamic programming
+        int[][] pathCount = new int[rows][cols];
+        pathCount[startRow][startCol] = 1;
+        
+        // Process cells in order of increasing distance
+        for (int dist = 0; dist <= distance[finishRow][finishCol]; dist++) {
+            for (int i = 0; i < rows; i++) {
+                for (int j = 0; j < cols; j++) {
+                    if (distance[i][j] == dist && pathCount[i][j] > 0) {
+                        for (int k = 0; k < 4; k++) {
+                            int newRow = i + dr[k];
+                            int newCol = j + dc[k];
+                            
+                            if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols
+                                && distance[newRow][newCol] == dist + 1) {
+                                pathCount[newRow][newCol] += pathCount[i][j];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return pathCount[finishRow][finishCol];
     }
 }
